@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="de" class="dark" data-theme="dark">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WealthWise - Financial Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              primary: '#3B82F6',
+              secondary: '#10B981',
+              accent: '#8B5CF6',
+            }
+          }
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+      /* Toast Styles */
+      .toast {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        padding: 1rem 2rem;
+        border-radius: 0.5rem;
+        color: white;
+        font-weight: 500;
+        z-index: 50;
+        transform: translateY(100%);
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .toast.show {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      .toast.success {
+        background-color: rgba(34, 197, 94, 0.9);
+      }
+      .toast.error {
+        background-color: rgba(239, 68, 68, 0.9);
+      }
+
+      /* Modal Styles */
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+      .modal.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 1;
+      }
+
+      /* Animation Classes */
+      .fade-in {
+        opacity: 0;
+        transform: translateY(10px);
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .fade-in.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .slide-in-left {
+        opacity: 0;
+        transform: translateX(-20px);
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .slide-in-left.visible {
+        opacity: 1;
+        transform: translateX(0);
+      }
+
+      .slide-in-right {
+        opacity: 0;
+        transform: translateX(20px);
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .slide-in-right.visible {
+        opacity: 1;
+        transform: translateX(0);
+      }
+
+      .scale-in {
+        opacity: 0;
+        transform: scale(0.95);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .scale-in.visible {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      /* Hover Effects */
+      .hover-scale {
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .hover-scale:hover {
+        transform: scale(1.02);
+      }
+
+      .hover-lift {
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .hover-lift:hover {
+        transform: translateY(-2px);
+      }
+
+      /* List Item Animations */
+      .list-item {
+        opacity: 0;
+        transform: translateY(10px);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .list-item.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* Button Animations */
+      .btn-pulse {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .btn-pulse::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 5px;
+        height: 5px;
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 50%;
+        transform: scale(0);
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(0);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(20);
+          opacity: 0;
+        }
+      }
+
+      /* Card Animations */
+      .card-enter {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .card-enter.visible {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+
+      /* Loading Animation */
+      .loading-spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Shake Animation */
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+        20%, 40%, 60%, 80% { transform: translateX(5px); }
+      }
+
+      .shake {
+        animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+      }
+
+      /* Bounce Animation */
+      @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+      }
+
+      .bounce {
+        animation: bounce 1s infinite;
+      }
+
+      /* Fade In Up Animation */
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .fade-in-up {
+        animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      }
+
+      /* Rotate Animation */
+      @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      .rotate {
+        animation: rotate 2s linear infinite;
+      }
+
+      /* Pulse Animation */
+      @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+      }
+
+      .pulse {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+
+      /* Slide Up Animation */
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(100%);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .slide-up {
+        animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      }
+
+      /* Zoom In Animation */
+      @keyframes zoomIn {
+        from {
+          opacity: 0;
+          transform: scale(0.5);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .zoom-in {
+        animation: zoomIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      }
+
+      /* Flip Animation */
+      @keyframes flip {
+        from {
+          transform: perspective(400px) rotateY(0);
+        }
+        to {
+          transform: perspective(400px) rotateY(360deg);
+        }
+      }
+
+      .flip {
+        animation: flip 1s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Enhanced Button Animations */
+      .animated-button {
+        position: relative;
+        overflow: hidden;
+        transform: translateY(0);
+        transition: all 0.2s ease;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .animated-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
+      }
+
+      .animated-button:active {
+        transform: translateY(0);
+      }
+
+      .animated-button::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 150%;
+        height: 150%;
+        background: rgba(255, 255, 255, 0.1);
+        transform: translate(-50%, -50%) rotate(45deg) scale(0);
+        transition: transform 0.6s ease;
+      }
+
+      .animated-button:hover::before {
+        transform: translate(-50%, -50%) rotate(45deg) scale(1);
+      }
+
+      .animated-button svg {
+        transition: transform 0.2s ease;
+      }
+
+      .animated-button:hover svg {
+        transform: rotate(90deg);
+      }
+
+      .animated-button i {
+        font-size: 1.2rem;
+      }
+
+      /* General Enhancements */
+      body {
+        color: #e5e7eb; /* Softer white for better readability */
+      }
+      h2, h3 {
+        color: #ffffff; /* Ensure headers stand out */
+      }
+      label {
+        color: #d1d5db; /* Softer gray for labels */
+      }
+
+      /* Button Enhancements */
+      .animated-button {
+        padding: 0.75rem 1.5rem; /* Increased padding for prominence */
+        font-size: 1rem; /* Slightly larger text */
+      }
+      .animated-button:hover {
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4); /* Enhanced hover effect */
+      }
+
+      /* Section Alignment */
+      .grid-cols-4 > div {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      /* Bilanz Highlight */
+      #result {
+        font-size: 2.5rem; /* Larger font size */
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.8); /* Glowing effect */
+      }
+
+      /* Expense Color Adjustment */
+      .text-red-400 {
+        color: #f87171; /* Softer red */
+      }
+
+      /* Chart Enhancements */
+      canvas {
+        border-radius: 0.5rem; /* Rounded edges for the chart */
+      }
+    </style>
+  </head>
+  <body class="bg-gray-900 text-white min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-800 shadow-lg">
+      <div class="container mx-auto px-4 py-4">
+        <div class="flex justify-between items-center">
+          <h1 class="text-2xl font-bold text-white">
+            <i class="fas fa-wallet"></i> WealthWise
+          </h1>
+    
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+ 
+      <!-- Income Section -->
+      <section class="mb-8 fade-in">
+        <h2 class="text-xl font-semibold mb-4">
+          <i class="fas fa-coins"></i> Monatliches Einkommen
+        </h2>
+        
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg hover-lift">
+            <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-300 mb-3 ">Zeitraum</label>
+                <div class="flex gap-2">
+                  <select id="year" onchange="onYearChange()" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                    <!-- Years will be populated by JavaScript -->
+                  </select>
+                  <select id="month" onchange="onMonthChange()" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                  </select>
+                </div>
+              </div>
+          <div class="flex flex-col md:flex-row gap-4">
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-300 mb-2">Einkommen</label>
+              <div class="flex gap-2">
+                <input type="number" id="income" onchange="handleSaveIncome()" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="€0.00">
+              </div>
+            </div>
+          </div>
+          <div class="mt-4">
+            <span id="incomeYearDisplay" class="text-gray-400"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Expenses Section -->
+      <section class="mb-8 fade-in">
+        <h2 class="text-xl font-semibold mb-4">
+          <i class="fas fa-shopping-cart"></i> Ausgaben
+        </h2>
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg hover-lift">
+          <div class="flex flex-col md:flex-row gap-4 mb-6">
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-300 mb-2">Betrag</label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">€</span>
+                <input type="number" id="expense" class="w-full bg-gray-700 border border-gray-600 rounded-lg pl-8 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-600" placeholder="0.00">
+              </div>
+            </div>
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-300 mb-2">Notiz</label>
+              <input type="text" id="note" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-600" placeholder="Beschreibung der Ausgabe">
+            </div>
+            <div class="flex items-end">
+                
+              <button onclick="handleAddExpense()" class="animated-button bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg transition-all duration-200">
+                <i class="fas fa-plus"></i> Neuer Ausgabe
+              </button>
+            </div>
+          </div>
+          <ul id="expenseList" class="space-y-3">
+            <!-- Expenses will be populated here -->
+          </ul>
+        </div>
+      </section>
+
+      <!-- Recurring Payments Section -->
+      <section class="mb-8 fade-in">
+        <h2 class="text-xl font-semibold mb-4">
+          <i class="fas fa-sync-alt"></i> Daueraufträge
+        </h2>
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg hover-lift">
+           
+          <button onclick="openModal()" class="animated-button bg-[#a855f7] hover:bg-[#9333ea] text-white px-6 py-3 rounded-lg transition-all duration-200 flex items-center gap-2 mb-6">
+            <i class="fas fa-plus"></i> Neuer Dauerauftrag
+          </button>
+          <ul id="dauerauftragList" class="space-y-3">
+            <!-- Recurring payments will be populated here -->
+          </ul>
+        </div>
+      </section>
+
+      <!-- Summary Section -->
+      <section class="mb-8 fade-in">
+        <h2 class="text-xl font-semibold mb-4">
+          <i class="fas fa-chart-line"></i> Zusammenfassung
+        </h2>
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg hover-lift">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+            <div class="relative w-full rounded-lg text-center overflow-hidden bg-gray-700 col-span-1 sm:col-span-2 lg:col-span-4">
+              <div id="positiveBalanceProgress" class="absolute top-0 left-0 h-full bg-gradient-to-r from-green-500 via-green-400 to-green-300 transition-all duration-1000 ease-in-out" style="width: 0%;"></div>
+              <div id="negativeBalanceProgress" class="absolute top-0 right-0 h-full bg-gradient-to-l from-red-500 via-red-400 to-red-300 transition-all duration-1000 ease-in-out" style="width: 0%;"></div>
+              <div class="relative p-4 z-10">
+                <h3 class="text-sm font-medium text-gray-300 mb-1">Bilanz</h3>
+                <p id="result" class="text-2xl font-bold text-white">€0.00</p>
+              </div>
+            </div>
+            <div class="bg-gray-700 p-4 rounded-lg text-center col-span-1 sm:col-span-1 lg:col-span-2">
+              <h3 class="text-sm font-medium text-gray-400 mb-1">Einkommen</h3>
+              <p id="incomeDisplay" class="text-2xl font-bold text-green-400">€0.00</p>
+            </div>
+
+            
+            <div class="bg-gray-700 p-4 rounded-lg text-center col-span-1 sm:col-span-1 lg:col-span-2">
+              <h3 class="text-sm font-medium text-gray-400 mb-1">Ausgaben</h3>
+              <p id="expensesDisplay" class="text-2xl font-bold text-red-400">€0.00</p>
+            </div>
+        
+            <div class="bg-gray-700 rounded-lg col-span-1 sm:col-span-2 lg:col-span-4 p-4">
+              <h3 class="text-sm font-medium text-gray-400 mb-1">Ausgabe Diagramm</h3>
+              <canvas id="expenseChart" width="75%" height="45"></canvas>
+            </div>
+          </div>
+         
+        </div>
+      </section>
+
+ 
+ 
+    </main>
+
+    <!-- Recurring Payment Modal -->
+    <div id="recurringModal" class="modal">
+      <div class="bg-gray-800 p-4 sm:p-8 rounded-xl shadow-2xl max-w-lg w-full mx-2 sm:mx-4 my-4 sm:my-0 scale-in">
+        <div class="flex justify-between items-center mb-4 sm:mb-6">
+          <h2 class="text-xl sm:text-2xl font-bold text-white">Neuer Dauerauftrag</h2>
+          <button onclick="closeModal()" class="text-gray-400 hover:text-white transition-colors duration-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="space-y-4 sm:space-y-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Betrag</label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">€</span>
+              <input type="number" id="dAmount" class="w-full bg-gray-700 border border-gray-600 rounded-lg pl-8 pr-4 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="0.00">
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Notiz</label>
+            <input type="text" id="dNote" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-accent" placeholder="Beschreibung des Dauerauftrags">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Zeitraum</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Von</label>
+                <div class="flex gap-2">
+                  <select id="dStartYear" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-accent">
+                    <!-- Years will be populated by JavaScript -->
+                  </select>
+                  <select id="dStartMonth" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-accent">
+                    <!-- Months will be populated by JavaScript -->
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Bis</label>
+                <div class="flex gap-2">
+                  <select id="dEndYear" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-accent">
+                    <!-- Years will be populated by JavaScript -->
+                  </select>
+                  <select id="dEndMonth" class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:outline-none focus:ring-2 focus:ring-accent">
+                    <!-- Months will be populated by JavaScript -->
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6 sm:mt-8">
+            <button onclick="closeModal()" class="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 text-gray-300 hover:text-white transition-colors duration-200">
+              Abbrechen
+            </button>
+            <button onclick="handleAddDauerauftrag()" class="w-full sm:w-auto bg-accent hover:bg-purple-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Hinzufügen
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
+   
+  </body>
+</html>

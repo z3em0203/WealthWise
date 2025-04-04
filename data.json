@@ -1,0 +1,11 @@
+{
+  "user123": {
+    "expenses": [],
+    "dauerauftraege": [],
+    "income": {
+      "2025 - April": {
+        "amount": 1000
+      }
+    }
+  }
+}
